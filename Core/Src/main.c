@@ -286,7 +286,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
     if (roboState == 0){
       VX = -0.1; VY = 0; Omega = 0;
-      if(x < 1000 + offsets[0]) { // 基準点がAの白線を踏んだあたりで遮断機を起動
+      if(x < 1000 + offsets[0]) { // 基準点がCの白線を踏んだあたりで遮断機を起動
         shadan_mode = 1;
       }
 
@@ -373,7 +373,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
     if (roboState == 10){
       VX = -0.1; VY = 0; Omega = 0;
-      if(x < 1000 + offsets[9]) { // 基準点がCの白線を踏んだあたりで遮断機を起動
+      if(x < 1000 + offsets[9]) { // 基準点がAの白線を踏んだあたりで遮断機を起動
         shadan_mode = 1;
       }
 
