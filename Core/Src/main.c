@@ -271,6 +271,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       }
     }
 
+    if (buzzerTimerMs > 0) {
+        buzzerTimerMs--;
+        if (buzzerTimerMs == 0) {
+            HAL_GPIO_WritePin(buzzer_PA10_GPIO_Port, buzzer_PA10_Pin, GPIO_PIN_RESET); // 消音
+        }
+    }
+
     // 姿勢自動補正：角度(theta)が傾いた分だけ逆向きの角速度(Omega)を与える
     if (isStarted) {
       Omega = -KP_OMEGA * theta;
@@ -417,14 +424,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     // if (timer2 > 0) timer2--;
   }
 
-  if (&htim16 == htim) {
-    if (buzzerTimerMs > 0) {
-        buzzerTimerMs--;
-        if (buzzerTimerMs == 0) {
-            HAL_GPIO_WritePin(buzzer_PA10_GPIO_Port, buzzer_PA10_Pin, GPIO_PIN_RESET); // 消音
-        }
-    }
-
+  if (&htim16 == htim) { // 10Hz
     if (!isStarted) SevenSeg_ToggleAnimate_Slider(0);
     if (roboState < 90)SevenSeg_Display_Number(roboState, 0);
   }
