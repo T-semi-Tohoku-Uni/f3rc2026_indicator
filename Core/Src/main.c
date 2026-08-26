@@ -264,7 +264,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         timerTactSwitch = 500; // 500ms待機
 
         HAL_GPIO_WritePin(buzzer_PA10_GPIO_Port, buzzer_PA10_Pin, GPIO_PIN_SET);
-        buzzerTimerMs = 300;
+        buzzerTimerMs = 500;
 
         isStarted = true;
         roboState = 0; // start
