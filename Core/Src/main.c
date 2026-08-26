@@ -292,7 +292,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     Velocity_Tx();
 
     if (roboState == 0){
-      VX = -0.1; VY = 0; Omega = 0;
+      VX = -0.1; VY = 0;
       if(x < 1000 + offsets[0]) { // 基準点がCの白線を踏んだあたりで遮断機を起動
         shadan_mode = 1;
       }
@@ -313,7 +313,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
 
     if (roboState == 2){
-      VX = 0.1; VY = 0; Omega = 0;
+      VX = 0.1; VY = 0;
       if(x > 4500 - roboWidth/2 + offsets[2]) { // 庭の端で荷物を下ろす
         roboState = 3;
         kaishu_mode = 0;
@@ -321,21 +321,21 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
 
     if (roboState == 3){
-      VX = -0.1; VY = 0; Omega = 0;
+      VX = -0.1; VY = 0;
       if(x < 1000 + roboWidth/2 + offsets[3]) { // 領域手前まで移動
         roboState = 4;
       }
     }
 
     if (roboState == 4){
-      VX = 0; VY = 0.1; Omega = 0;
+      VX = 0; VY = 0.1;
       if(y>1200 + offsets[4]) { // フィールドBの手前に来た時
         roboState = 5;
       }
     }
 
     if (roboState == 5){
-      VX = -0.1; VY = 0; Omega = 0;
+      VX = -0.1; VY = 0;
       if(x < 1000 + offsets[5]) { // 基準点がBの白線を踏んだあたりで遮断機を起動
         shadan_mode = 1;
       }
@@ -348,7 +348,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
 
     if (roboState == 6){
-      VX = 0; VY = 0; Omega = 0;
+      VX = 0; VY = 0;
       if(timer1 == 0) {
         roboState = 7;
         shadan_mode = 0;
@@ -356,7 +356,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
 
     if (roboState == 7){
-      VX = 0.1; VY = 0; Omega = 0;
+      VX = 0.1; VY = 0;
       if(x > 4500 - roboWidth/2 + offsets[7]) { // 庭の端で荷物を下ろす
         roboState = 8;
         kaishu_mode = 0;
@@ -364,7 +364,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
 
     if (roboState == 8){
-      VX = -0.1; VY = 0; Omega = 0;
+      VX = -0.1; VY = 0;
       if(x < 1000 + roboWidth/2 + offsets[8]) { // 領域手前まで移動
         roboState = 9;
       }
@@ -379,7 +379,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
 
     if (roboState == 10){
-      VX = -0.1; VY = 0; Omega = 0;
+      VX = -0.1; VY = 0;
       if(x < 1000 + offsets[9]) { // 基準点がAの白線を踏んだあたりで遮断機を起動
         shadan_mode = 1;
       }
@@ -392,7 +392,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
 
     if (roboState == 11){
-      VX = 0; VY = 0; Omega = 0;
+      VX = 0; VY = 0;
       if(timer1 == 0) {
         roboState = 12;
         shadan_mode = 0;
@@ -400,7 +400,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
 
     if (roboState == 12){
-      VX = 0.1; VY = 0; Omega = 0;
+      VX = 0.1; VY = 0;
       if(x > 4500 - roboWidth/2 + offsets[11]) { // 庭の端で荷物を下ろす
         roboState = 13;
         kaishu_mode = 0;
@@ -408,14 +408,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
 
     if (roboState == 13){
-      VX = -0.1; VY = 0; Omega = 0;
+      VX = -0.1; VY = 0;
       if(x < 0 + roboWidth + offsets[12]) {
         roboState = 99;
       }
     }
 
     if (roboState == 99){ // end
-      VX = 0; VY = 0; Omega = 0;
+      VX = 0; VY = 0;
     }
   }
 
