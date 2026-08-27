@@ -110,8 +110,13 @@ volatile float omega = 0; // rad/s
 
 volatile float theta = 0;
 // スタート地点から算出。ロボットを上から見た時の長方形の幾何学中心を基準点とする
-volatile float x = 1800 + 500/2;
-volatile float y = 500/2;
+volatile float x;
+volatile float y;
+volatile float offsetX = 0;
+volatile float offsetY = 0;
+// positionリセット用に加工
+volatile float X = 0;
+volatile float Y = 0;
 
 volatile uint16_t buzzerTimerMs = 0; // ブザーを鳴らす残り時間（ms）
 
@@ -195,28 +200,12 @@ void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs)
 		}
     //printf("warikomi\r\n");
     if (imukeisoku_id == RxHeader.Identifier) {
-   	  float vel_data[4];
-      u8_to_float(RxData, vel_data, 16);
+   	  float pos_data[3];
+      u8_to_float(RxData, pos_data, 12);
 
-      float local_vx = vel_data[0]; // mm/s
-      float local_vy = vel_data[1]; // mm/s
-      float omega    = vel_data[2]; // rad/s
-      theta = vel_data[3];
-
-      float dt = 0.001f; // 1ms
-
-      // 機体の現在の向き(theta)で回転行列を計算
-      float cos_t = cosf(theta);
-      float sin_t = sinf(theta);
-
-      // ローカル速度をフィールド絶対座標の変位量 (dx, dy) へ変換
-      float dx = (local_vx * cos_t - local_vy * sin_t) * dt;
-      float dy = (local_vx * sin_t + local_vy * cos_t) * dt;
-
-      // 積算（+=）で現在地を更新
-      x += dx;
-      y += dy;
-      theta += omega * dt;
+      x = pos_data[0]; // mm/s
+      y = pos_data[1]; // mm/s
+      theta = pos_data[2]; // rad
     }
 	}
 }
@@ -287,13 +276,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     
     Velocity_Tx();
 
+    X = x + offsetX;
+    Y = y + offsetY;
+
     if (roboState == 0){
       VX = -0.1; VY = 0;
-      if(x < 1000 + offsets[0]) { // 基準点がCの白線を踏んだあたりの処理
+      if(X < 1000 + offsets[0]) { // 基準点がCの白線を踏んだあたりの処理
         
       }
 
-      if(x < 0 + roboWidth/2 + offsets[1]){ // offset必須か。機体がゾーンの端にまで行ったら回収機を起動
+      if(X < 0 + roboWidth/2 + offsets[1]){ // offset必須か。機体がゾーンの端にまで行ったら回収機を起動
         roboState = 1;
         servo_mode = 1;
         timer1 = 500; // state1での動作時間を決める
@@ -309,7 +301,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
     if (roboState == 2){
       VX = 0.1; VY = 0;
-      if(x > 4500 - roboWidth/2 + offsets[2]) { // 庭の端で荷物を下ろす
+      if(X > 4500 - roboWidth/2 + offsets[2]) { // 庭の端で荷物を下ろす
         roboState = 3;
         servo_mode = 0;
       }
@@ -317,25 +309,25 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
     if (roboState == 3){
       VX = -0.1; VY = 0;
-      if(x < 1000 + roboWidth/2 + offsets[3]) { // 領域手前まで移動
+      if(X < 1000 + roboWidth/2 + offsets[3]) { // 領域手前まで移動
         roboState = 4;
       }
     }
 
     if (roboState == 4){
       VX = 0; VY = 0.1;
-      if(y>1200 + offsets[4]) { // フィールドBの手前に来た時
+      if(Y>1200 + offsets[4]) { // フィールドBの手前に来た時
         roboState = 5;
       }
     }
 
     if (roboState == 5){
       VX = -0.1; VY = 0;
-      if(x < 1000 + offsets[5]) { // 基準点がBの白線を踏んだあたりの処理
+      if(X < 1000 + offsets[5]) { // 基準点がBの白線を踏んだあたりの処理
 
       }
 
-      if(x < 0 + roboWidth/2 + offsets[6]){ // 機体がゾーンの端にまで行ったら回収機を起動
+      if(X < 0 + roboWidth/2 + offsets[6]){ // 機体がゾーンの端にまで行ったら回収機を起動
         roboState = 6;
         servo_mode = 1;
         timer1 = 500;
@@ -351,7 +343,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
     if (roboState == 7){
       VX = 0.1; VY = 0;
-      if(x > 4500 - roboWidth/2 + offsets[7]) { // 庭の端で荷物を下ろす
+      if(X > 4500 - roboWidth/2 + offsets[7]) { // 庭の端で荷物を下ろす
         roboState = 8;
         servo_mode = 0;
       }
@@ -359,7 +351,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
     if (roboState == 8){
       VX = -0.1; VY = 0;
-      if(x < 1000 + roboWidth/2 + offsets[8]) { // 領域手前まで移動
+      if(X < 1000 + roboWidth/2 + offsets[8]) { // 領域手前まで移動
         roboState = 9;
       }
     }
@@ -368,17 +360,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       VX = 0; VY = 0.1; Omega = 0;
       if(HAL_GPIO_ReadPin(SW1_PC9_GPIO_Port, SW1_PC9_Pin) == My_SWlimit_PRESSED) { // フィールドCの手前に来た時
         roboState = 10;
-        y = 2400 - roboLength/2;
+        offsetY = 2400 - roboLength/2 - y;
       }
     }
 
     if (roboState == 10){
       VX = -0.1; VY = 0;
-      if(x < 1000 + offsets[9]) { // 基準点がAの白線を踏んだあたりの処理
+      if(X < 1000 + offsets[9]) { // 基準点がAの白線を踏んだあたりの処理
 
       }
 
-      if(x < 0 + roboWidth/2 + offsets[10]){ // 機体がゾーンの端にまで行ったら回収機を起動
+      if(X < 0 + roboWidth/2 + offsets[10]){ // 機体がゾーンの端にまで行ったら回収機を起動
         roboState = 11;
         servo_mode = 1;
         timer1 = 500;
@@ -395,7 +387,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
     if (roboState == 12){
       VX = 0.1; VY = 0;
-      if(x > 4500 - roboWidth/2 + offsets[11]) { // 庭の端で荷物を下ろす
+      if(X > 4500 - roboWidth/2 + offsets[11]) { // 庭の端で荷物を下ろす
         roboState = 13;
         servo_mode = 0;
       }
@@ -426,13 +418,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 void Velocity_Tx()
 {
-  // VX = -0.05; VY = 0;
-  // Omega = -0.05;
+  FDCAN_TxHeaderTypeDef localTxHeader = TxHeader; // グローバル初期設定をコピー
+  localTxHeader.Identifier = vel_id;
+
   int16_t v_x_tsushin = (int16_t)(VX * 1000);
   int16_t v_y_tsushin = (int16_t)(VY * 1000);
   int16_t omega_tsushin = (int16_t)(Omega * 400);
 
-  TxHeader.Identifier = vel_id;
   uint8_t TxData_vel[8] = {};
   TxData_vel[0] = (uint8_t) ( ((int16_t)v_x_tsushin) >> 8);
   TxData_vel[1] = (uint8_t) ( ((int16_t)v_x_tsushin) & 0xff);
@@ -442,7 +434,7 @@ void Velocity_Tx()
   TxData_vel[5] = (uint8_t) ( ((int16_t)omega_tsushin) & 0xff);
 
   //printf("Tx %d,%d,%d \r\n",v_x_tsushin,v_y_tsushin,omega_tsushin);
-  if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData_vel) != HAL_OK){
+  if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &localTxHeader, TxData_vel) != HAL_OK){
     printf("add_message_vel is error\r\n");
     Error_Handler();
   }
@@ -450,12 +442,14 @@ void Velocity_Tx()
 
 void Servo_Tx(uint8_t one_or_zero)
 {
-  TxHeader.Identifier = servo_id;
+  FDCAN_TxHeaderTypeDef localTxHeader = TxHeader; // グローバル初期設定をコピー
+  localTxHeader.Identifier = servo_id;
+
   uint8_t TxData_Servo[8] = {};
 
   TxData_Servo[0] = one_or_zero ? (uint8_t)1 : (uint8_t)0;
 
-  if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData_Servo) != HAL_OK){
+  if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &localTxHeader, TxData_Servo) != HAL_OK){
     printf("add_message_kaishu is error\r\n");
     Error_Handler();
   }
@@ -536,10 +530,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    // 送信処理中にTxHeaderが変わるのを防止する
-    __disable_irq();
     Servo_Tx(servo_mode);
-    __enable_irq();
 
     HAL_Delay(10);
   }
@@ -1287,6 +1278,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
+  printf("Error");
   __disable_irq();
   while (1)
   {
