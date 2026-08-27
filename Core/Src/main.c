@@ -30,11 +30,6 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-typedef struct{
-	volatile float indx;
-	volatile float indy;
-	volatile float theta;
-}got_vel;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
