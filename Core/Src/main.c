@@ -259,7 +259,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     else if (timerTactSwitch == 0) // タイマーが0になった（ボタンを押してOKな状態）
     {
       // チャタリング除去完了
-      if (HAL_GPIO_ReadPin(SWtact_PC12_GPIO_Port, SWtact_PC12_Pin) == My_SWtact_PRESSED)
+      if (HAL_GPIO_ReadPin(SW3_PC11_GPIO_Port, SW3_PC11_Pin) == My_SWlimit_PRESSED)
       {
         timerTactSwitch = 500; // 500ms待機
 
@@ -1312,6 +1312,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
+  printf("Error");
   __disable_irq();
   while (1)
   {
