@@ -39,6 +39,9 @@
 #define My_SWlimit_PRESSED GPIO_PIN_RESET
 #define My_SWlimit_RELEASED GPIO_PIN_SET
 
+#define START_POS_X (2000.0f+ 500.0f / 2.0f)
+#define START_POS_Y (500.0f / 2.0f)
+
 #define PI 3.14159
 
 #define KP_OMEGA 2.5f
@@ -105,8 +108,8 @@ volatile float omega = 0; // rad/s
 
 volatile float theta = 0;
 // スタート地点から算出。ロボットを上から見た時の長方形の幾何学中心を基準点とする
-volatile float x;
-volatile float y;
+volatile float x=START_POS_X;
+volatile float y=START_POS_Y;
 volatile float offsetX = 0;
 volatile float offsetY = 0;
 // positionリセット用に加工
