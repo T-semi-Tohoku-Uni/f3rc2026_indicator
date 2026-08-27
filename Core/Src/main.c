@@ -246,20 +246,20 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       {
         timerTactSwitch = 500; // 500ms待機
 
-        HAL_GPIO_WritePin(buzzer_PA10_GPIO_Port, buzzer_PA10_Pin, GPIO_PIN_SET);
-        buzzerTimerMs = 500;
+        // HAL_GPIO_WritePin(buzzer_PA10_GPIO_Port, buzzer_PA10_Pin, GPIO_PIN_SET);
+        // buzzerTimerMs = 500;
 
         isStarted = true;
         roboState = 0; // start
       }
     }
 
-    if (buzzerTimerMs > 0) {
-        buzzerTimerMs--;
-        if (buzzerTimerMs == 0) {
-            HAL_GPIO_WritePin(buzzer_PA10_GPIO_Port, buzzer_PA10_Pin, GPIO_PIN_RESET); // 消音
-        }
-    }
+    // if (buzzerTimerMs > 0) {
+    //     buzzerTimerMs--;
+    //     if (buzzerTimerMs == 0) {
+    //         HAL_GPIO_WritePin(buzzer_PA10_GPIO_Port, buzzer_PA10_Pin, GPIO_PIN_RESET); // 消音
+    //     }
+    // }
 
     // 姿勢自動補正：角度(theta)が傾いた分だけ逆向きの角速度(Omega)を与える
     if (isStarted) {
@@ -410,7 +410,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
   if (&htim16 == htim) { // 10Hz
     if (!isStarted) SevenSeg_ToggleAnimate_Slider(0);
-    if (roboState < 90)SevenSeg_Display_Number(roboState, 0);
+    if (roboState < 90){
+      SevenSeg_Display_Number(roboState / 10, 0); // 左側に十の位を表示
+      SevenSeg_Display_Number(roboState % 10, 1); // 右側に一の位を表示
+    }
   }
 }
 
@@ -531,6 +534,8 @@ int main(void)
     Servo_Tx(servo_mode);
 
     HAL_Delay(10);
+
+    printf("x:%lf, y:%lf, theta:%lf\r\n", x, y, theta);
   }
   /* USER CODE END 3 */
 }
