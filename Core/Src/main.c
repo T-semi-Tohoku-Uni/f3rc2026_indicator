@@ -177,7 +177,7 @@ void u8_to_float(uint8_t *req, float *des, uint32_t uint8_len)
     float fval;
   };
   for(int i = 0; i < uint8_len/4; i++){
-    uint32_t f32_u32 = ((req[i*4] << 24) | (req[i*4+1] << 16) | (req[i*4+2] << 8) | (req[i*4+3]));
+    uint32_t f32_u32 = (((uint32_t)req[i*4] << 24) | ((uint32_t)req[i*4+1] << 16) | ((uint32_t)req[i*4+2] << 8) | ((uint32_t)req[i*4+3]));
     union IntAndFloat target;
     target.ival = f32_u32;
     des[i] = target.fval;
