@@ -60,7 +60,6 @@
 #define START_THETA PI
 
 #define AVG_WINDOW_SIZE 25
-#define FLOAT_MIN -32768
 
 // 機体の機構パラメータ (実測値をmm単位等で設定。CADデータの原点を仮想的な機体中心とした)
 const float L = 15.80f; // y軸方向を向く輪のx軸からの距離
@@ -254,7 +253,7 @@ void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs)
       enc_value_2 = (int)odometry_data[2];
       enc_value_3 = (int)odometry_data[3];
 
-      isSensorReady = !(yaw == FLOAT_MIN); // 最低値が送られてきている間はバイアス計算中（未準備）とみなす
+      isSensorReady = !(odometry_data[0] == -32768); // 最低値が送られてきている間はバイアス計算中（未準備）とみなす
     }
 	}
 }
