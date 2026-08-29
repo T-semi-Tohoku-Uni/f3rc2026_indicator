@@ -182,6 +182,15 @@ void u8_to_float(uint8_t *req, float *des, uint32_t uint8_len)
   }
 }
 
+void u8_to_int16(uint8_t *req, int16_t *des, uint32_t int_len)
+{
+  for (uint32_t i = 0; i < int_len; i++)
+  {
+    uint16_t val = ((uint16_t)req[i * 2] << 8) | (uint16_t)req[i * 2 + 1];
+    des[i] = (int16_t)val;
+  }
+}
+
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
   HAL_TIM_PWM_Stop_DMA(htim, TIM_CHANNEL_4);
@@ -196,14 +205,14 @@ void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs)
 			printf("fdcan_getrxmessage is error\r\n");
 			Error_Handler();
 		}
-    //printf("warikomi\r\n");
+    
     if (imukeisoku_id == RxHeader.Identifier) {
-   	  float pos_data[3];
-      u8_to_float(RxData, pos_data, 12);
+      int16_t pos_data[3];
+      u8_to_int16(RxData, pos_data, 3);
 
-      x = pos_data[0]; // mm/s
-      y = pos_data[1]; // mm/s
-      theta = pos_data[2]; // rad
+      x     = (float)pos_data[0];         // mm/s
+      y     = (float)pos_data[1];         // mm/s
+      theta = (float)pos_data[2] / 1000.0f; // rad
     }
 	}
 }
