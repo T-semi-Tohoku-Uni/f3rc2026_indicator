@@ -457,6 +457,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     if (roboState == 99){ // end
       VX = 0; VY = 0;
     }
+
+    Velocity_Tx();
   }
 
   if (&htim7 == htim) { // 100Hz
@@ -471,8 +473,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       SevenSeg_Display_Number(roboState % 10, 1); // 右側に一の位を表示
     }
   }
-
-  Velocity_Tx();
 }
 
 void Velocity_Tx()
