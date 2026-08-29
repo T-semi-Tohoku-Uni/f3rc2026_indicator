@@ -427,12 +427,12 @@ void Velocity_Tx()
   int16_t omega_tsushin = (int16_t)(Omega * 400);
 
   uint8_t TxData_vel[8] = {};
-  TxData_vel[0] = (uint8_t) ( ((int16_t)v_x_tsushin) >> 8);
-  TxData_vel[1] = (uint8_t) ( ((int16_t)v_x_tsushin) & 0xff);
-  TxData_vel[2] = (uint8_t) ( ((int16_t)v_y_tsushin) >> 8);
-  TxData_vel[3] = (uint8_t) ( ((int16_t)v_y_tsushin) & 0xff);
-  TxData_vel[4] = (uint8_t) ( ((int16_t)omega_tsushin) >> 8);
-  TxData_vel[5] = (uint8_t) ( ((int16_t)omega_tsushin) & 0xff);
+  TxData_vel[0] = (uint8_t) ( v_x_tsushin >> 8);
+  TxData_vel[1] = (uint8_t) ( v_x_tsushin & 0xff);
+  TxData_vel[2] = (uint8_t) ( v_y_tsushin >> 8);
+  TxData_vel[3] = (uint8_t) ( v_y_tsushin & 0xff);
+  TxData_vel[4] = (uint8_t) ( omega_tsushin >> 8);
+  TxData_vel[5] = (uint8_t) ( omega_tsushin & 0xff);
 
   //printf("Tx %d,%d,%d \r\n",v_x_tsushin,v_y_tsushin,omega_tsushin);
   if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &localTxHeader, TxData_vel) != HAL_OK){
