@@ -39,13 +39,6 @@
 #define My_SWlimit_PRESSED GPIO_PIN_RESET
 #define My_SWlimit_RELEASED GPIO_PIN_SET
 
-#define START_POS_X (2000.0f+ 500.0f / 2.0f)
-#define START_POS_Y (500.0f / 2.0f)
-
-#define PI 3.14159
-
-#define KP_OMEGA 2.5f
-
 // 反転させるのだろうか？
 #define My_HIGH GPIO_PIN_RESET
 #define My_LOW GPIO_PIN_SET
@@ -55,7 +48,22 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+#define PI 3.14159
 
+#define KP_OMEGA 2.5f
+
+#define PPR 2000.0 //pulses per revolution
+#define R 30.0//mm  //radious of wheel
+
+#define START_POS_X (2000.0f+ 500.0f / 2.0f)
+#define START_POS_Y (500.0f / 2.0f)
+#define START_THETA PI
+
+#define AVG_WINDOW_SIZE 25
+#define FLOAT_MIN -32768
+
+// 機体の機構パラメータ (実測値をmm単位等で設定。CADデータの原点を仮想的な機体中心とした)
+const float L = 15.80f; // y軸方向を向く輪のx軸からの距離
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -84,7 +92,7 @@ uint8_t TxData[8] = {};
 uint8_t RxData[12] = {}; 
 
 const int16_t vel_id = 0x005;
-const int16_t imukeisoku_id = 0x015;
+const int16_t odometry_id = 0x015;
 const int16_t servo_id = 0x206;
 
 uint16_t timer1000Hz = 0;     // 1000Hzタイマー
@@ -95,26 +103,34 @@ uint16_t timerTactSwitch = 0; // タクトスイッチチャタリング除去�
 uint16_t countUpTimer1000Hz = 0; // 1000Hzタイマー用カウンタ
 
 // 機体の縦横サイズ
-float roboWidth = 475.46;
-float roboLength = 491.44;
+const float roboWidth = 475.46;
+const float roboLength = 491.44;
 
 // ロボマス制御用
 volatile float VX = 0, VY = 0;//mm/ms
 volatile float Omega = 0; // rad/s
 
-// imu-計測輪からのデータ保持用
+// 機体の位置計算用(ローカル座標計算S)
+const float dt = 0.001f; // 1ms
+volatile float deg1 = 0, deg2 = 0, deg3 = 0;
+volatile float dwl = 0;
+volatile float dxl = 0;
+volatile float dyl = 0;
 volatile float vx = 0, vy = 0;//mm/ms
 volatile float omega = 0; // rad/s
 
-volatile float theta = 0;
-// スタート地点から算出。ロボットを上から見た時の長方形の幾何学中心を基準点とする
-volatile float x=START_POS_X;
-volatile float y=START_POS_Y;
-volatile float offsetX = 0;
-volatile float offsetY = 0;
-// positionリセット用に加工
-volatile float X = 0;
-volatile float Y = 0;
+// スタート地点から算出するグローバル座標。機体を上から見た時の長方形の幾何学中心を基準点とする
+volatile float x = START_POS_X;
+volatile float y = START_POS_Y;
+volatile float theta = START_THETA;
+
+// 通信で取得するデータ
+volatile float yaw = 0;
+volatile int enc_value_1;
+volatile int enc_value_2;
+volatile int enc_value_3;
+
+volatile float prev_yaw = 0.0f;
 
 volatile uint16_t buzzerTimerMs = 0; // ブザーを鳴らす残り時間（ms）
 
@@ -123,16 +139,15 @@ float offsets[13]={
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-uint8_t servo_mode = 0; // 0:復帰, 1:動作
+volatile uint8_t servo_mode = 0; // 0:復帰, 1:動作
 
 uint8_t swstate = 0;// リミットスイッチ上下左右
 
-bool isStarted = false;
-uint8_t roboState = 99;
+volatile bool isStarted = false;
+volatile bool isSensorReady = false;
+volatile uint8_t roboState = 99;
 
-uint16_t timer1 = 0;
-// uint16_t timer2 = 0;
-
+volatile uint16_t timer1 = 0;
 
 /* USER CODE END PV */
 
@@ -157,15 +172,24 @@ HAL_StatusTypeDef interboard_comms_CAN_RxTxSettings_init(FDCAN_TxHeaderTypeDef *
 HAL_StatusTypeDef CAN_SEND(uint32_t CANID, uint8_t *txdata, FDCAN_HandleTypeDef *hfdcan, FDCAN_TxHeaderTypeDef *htxheader);
 
 void Velocity_Tx(void);
+void Servo_Tx(uint8_t one_or_zero);
 // uint8_t LimitSW_front(void);
 // uint8_t LimitSW_back(void);
 // uint8_t LimitSW_left(void);
 // uint8_t LimitSW_right(void);
 // uint8_t LimitSW_Start(void);
+
+typedef struct {
+    float buffer[AVG_WINDOW_SIZE]; // 静的に確保
+    int index;
+    int count;
+    double sum;
+} MovingAvgData;
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+static MovingAvgData avg_x, avg_y, avg_omega;
 
 // uint8_t 型のバイト列（4バイト単位）を、IEEE 754 形式の float（単精度浮動小数点数）配列へ復元・変換する関数
 void u8_to_float(uint8_t *req, float *des, uint32_t uint8_len)
@@ -191,6 +215,21 @@ void u8_to_int16(uint8_t *req, int16_t *des, uint32_t int_len)
   }
 }
 
+float update_ma_isr(MovingAvgData *ma, float next_val) {
+    // 古い値を引いて新しい値を足す (O(1)の計算)
+    if (ma->count == AVG_WINDOW_SIZE) {
+        ma->sum -= ma->buffer[ma->index];
+    } else {
+        ma->count++;
+    }
+
+    ma->buffer[ma->index] = next_val;
+    ma->sum += next_val;
+    ma->index = (ma->index + 1) % AVG_WINDOW_SIZE;
+
+    return ma->sum / (float)ma->count;
+}
+
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
   HAL_TIM_PWM_Stop_DMA(htim, TIM_CHANNEL_4);
@@ -206,13 +245,16 @@ void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs)
 			Error_Handler();
 		}
     
-    if (imukeisoku_id == RxHeader.Identifier) {
-      int16_t pos_data[3];
-      u8_to_int16(RxData, pos_data, 3);
+    if (odometry_id == RxHeader.Identifier) {
+      int16_t odometry_data[4];
+      u8_to_int16(RxData, odometry_data, 4);
 
-      x     = (float)pos_data[0];         // mm/s
-      y     = (float)pos_data[1];         // mm/s
-      theta = (float)pos_data[2] / 1000.0f; // rad
+      yaw = (float)odometry_data[0] / 1000.0f; // rad
+      enc_value_1 = (int)odometry_data[1];
+      enc_value_2 = (int)odometry_data[2];
+      enc_value_3 = (int)odometry_data[3];
+
+      isSensorReady = !(yaw == FLOAT_MIN); // 最低値が送られてきている間はバイアス計算中（未準備）とみなす
     }
 	}
 }
@@ -255,44 +297,50 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       {
         timerTactSwitch = 500; // 500ms待機
 
-        // HAL_GPIO_WritePin(buzzer_PA10_GPIO_Port, buzzer_PA10_Pin, GPIO_PIN_SET);
-        // buzzerTimerMs = 500;
-
         isStarted = true;
         roboState = 0; // start
       }
     }
 
-    // if (buzzerTimerMs > 0) {
-    //     buzzerTimerMs--;
-    //     if (buzzerTimerMs == 0) {
-    //         HAL_GPIO_WritePin(buzzer_PA10_GPIO_Port, buzzer_PA10_Pin, GPIO_PIN_RESET); // 消音
-    //     }
-    // }
-
-    // 姿勢自動補正：角度(theta)が傾いた分だけ逆向きの角速度(Omega)を与える
-    if (isStarted) {
-      Omega = -KP_OMEGA * theta;
+    // 姿勢自動補正：角度(yaw)が傾いた分だけ逆向きの角速度(Omega)を与える
+    if (!isStarted || !isSensorReady) {
+      VX = 0; VY = 0; Omega = 0;
+    } else {
+      Omega = -KP_OMEGA * yaw;
 
       // 念のため補正角速度が大きくなりすぎないようリミッターをかける（最大 ±1.0 rad/s）
       if (Omega > 1.0f)  Omega = 1.0f;
       if (Omega < -1.0f) Omega = -1.0f;
-    } else {
-      VX = 0; VY = 0; Omega = 0;
+
+      // 計測輪の設定上4で割るっぽい
+      deg1 = ((enc_value_1 / (PPR * 4.0f)) * 2.0f * PI) / dt;
+      deg2 = ((enc_value_2 / (PPR * 4.0f)) * 2.0f * PI) / dt;
+      deg3 = ((enc_value_3 / (PPR * 4.0f)) * 2.0f * PI) / dt;
+
+      // 1msあたりの角度変化量から角速度 [rad/s] を算出
+      dwl = (yaw - prev_yaw) / dt; 
+      prev_yaw = yaw; // 次回用に保持
+      dxl = (deg3 + deg2) * R / 2.0f;
+      dyl = deg1 * R - (L * dwl); // Y輪の回転干渉をキャンセル
+        
+      // 移動平均を計算（計算負荷は非常に低い）
+      vx = update_ma_isr(&avg_x, dxl);
+      vy = update_ma_isr(&avg_y, dyl);
+      omega = update_ma_isr(&avg_omega, dwl);
+
+      theta = yaw + START_THETA;
+
+      x += (vx * cosf(theta) - vy * sinf(theta)) * dt;
+      y += (vx * sinf(theta) - vy * cosf(theta)) * dt;
     }
     
-    Velocity_Tx();
-
-    X = x + offsetX;
-    Y = y + offsetY;
-
     if (roboState == 0){
       VX = -0.1; VY = 0;
-      if(X < 1000 + offsets[0]) { // 基準点がCの白線を踏んだあたりの処理
+      if(x < 1000 + offsets[0]) { // 基準点がCの白線を踏んだあたりの処理
         
       }
 
-      if(X < 0 + roboWidth/2 + offsets[1]){ // offset必須か。機体がゾーンの端にまで行ったら回収機を起動
+      if(x < 0 + roboWidth/2 + offsets[1]){ // offset必須か。機体がゾーンの端にまで行ったら回収機を起動
         roboState = 1;
         servo_mode = 1;
         timer1 = 500; // state1での動作時間を決める
@@ -308,7 +356,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
     if (roboState == 2){
       VX = 0.1; VY = 0;
-      if(X > 4500 - roboWidth/2 + offsets[2]) { // 庭の端で荷物を下ろす
+      if(x > 4500 - roboWidth/2 + offsets[2]) { // 庭の端で荷物を下ろす
         roboState = 3;
         servo_mode = 0;
       }
@@ -316,25 +364,25 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
     if (roboState == 3){
       VX = -0.1; VY = 0;
-      if(X < 1000 + roboWidth/2 + offsets[3]) { // 領域手前まで移動
+      if(x < 1000 + roboWidth/2 + offsets[3]) { // 領域手前まで移動
         roboState = 4;
       }
     }
 
     if (roboState == 4){
       VX = 0; VY = 0.1;
-      if(Y>1200 + offsets[4]) { // フィールドBの手前に来た時
+      if(y>1200 + offsets[4]) { // フィールドBの手前に来た時
         roboState = 5;
       }
     }
 
     if (roboState == 5){
       VX = -0.1; VY = 0;
-      if(X < 1000 + offsets[5]) { // 基準点がBの白線を踏んだあたりの処理
+      if(x < 1000 + offsets[5]) { // 基準点がBの白線を踏んだあたりの処理
 
       }
 
-      if(X < 0 + roboWidth/2 + offsets[6]){ // 機体がゾーンの端にまで行ったら回収機を起動
+      if(x < 0 + roboWidth/2 + offsets[6]){ // 機体がゾーンの端にまで行ったら回収機を起動
         roboState = 6;
         servo_mode = 1;
         timer1 = 500;
@@ -350,7 +398,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
     if (roboState == 7){
       VX = 0.1; VY = 0;
-      if(X > 4500 - roboWidth/2 + offsets[7]) { // 庭の端で荷物を下ろす
+      if(x > 4500 - roboWidth/2 + offsets[7]) { // 庭の端で荷物を下ろす
         roboState = 8;
         servo_mode = 0;
       }
@@ -358,7 +406,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
     if (roboState == 8){
       VX = -0.1; VY = 0;
-      if(X < 1000 + roboWidth/2 + offsets[8]) { // 領域手前まで移動
+      if(x < 1000 + roboWidth/2 + offsets[8]) { // 領域手前まで移動
         roboState = 9;
       }
     }
@@ -367,17 +415,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       VX = 0; VY = 0.1; Omega = 0;
       if(HAL_GPIO_ReadPin(SW1_PC9_GPIO_Port, SW1_PC9_Pin) == My_SWlimit_PRESSED) { // フィールドCの手前に来た時
         roboState = 10;
-        offsetY = 2400 - roboLength/2 - y;
+        y = 2400 - roboLength/2;
       }
     }
 
     if (roboState == 10){
       VX = -0.1; VY = 0;
-      if(X < 1000 + offsets[9]) { // 基準点がAの白線を踏んだあたりの処理
+      if(x < 1000 + offsets[9]) { // 基準点がAの白線を踏んだあたりの処理
 
       }
 
-      if(X < 0 + roboWidth/2 + offsets[10]){ // 機体がゾーンの端にまで行ったら回収機を起動
+      if(x < 0 + roboWidth/2 + offsets[10]){ // 機体がゾーンの端にまで行ったら回収機を起動
         roboState = 11;
         servo_mode = 1;
         timer1 = 500;
@@ -394,7 +442,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
     if (roboState == 12){
       VX = 0.1; VY = 0;
-      if(X > 4500 - roboWidth/2 + offsets[11]) { // 庭の端で荷物を下ろす
+      if(x > 4500 - roboWidth/2 + offsets[11]) { // 庭の端で荷物を下ろす
         roboState = 13;
         servo_mode = 0;
       }
@@ -414,7 +462,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
   if (&htim7 == htim) { // 100Hz
     if (timer1 > 0) timer1--;
-    // if (timer2 > 0) timer2--;
+    Servo_Tx(servo_mode);
   }
 
   if (&htim16 == htim) { // 10Hz
@@ -424,6 +472,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       SevenSeg_Display_Number(roboState % 10, 1); // 右側に一の位を表示
     }
   }
+
+  Velocity_Tx();
 }
 
 void Velocity_Tx()
@@ -519,8 +569,8 @@ int main(void)
     Error_Handler();
 
   HAL_TIM_Base_Start_IT(&htim6);
-  HAL_TIM_Base_Start_IT(&htim7); // 追加
-  HAL_TIM_Base_Start_IT(&htim16); // 追加
+  HAL_TIM_Base_Start_IT(&htim7);
+  HAL_TIM_Base_Start_IT(&htim16);
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim20, TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
@@ -540,11 +590,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    Servo_Tx(servo_mode);
-
     HAL_Delay(10);
 
-    printf("x:%lf, y:%lf, theta:%lf\r\n", x, y, theta);
+    printf("x:%lf, y:%lf, yaw:%lf\r\n", x, y, yaw);
   }
   /* USER CODE END 3 */
 }
