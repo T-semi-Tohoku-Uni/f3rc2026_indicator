@@ -105,7 +105,7 @@ const float roboWidth = 475.46;
 const float roboLength = 491.44;
 
 // ロボマス制御用
-volatile float VX = 0, VY = 0;//mm/ms
+volatile float VX = 0, VY = 0; //mm/s
 volatile float Omega = 0; // rad/s
 
 // 機体の位置計算用(ローカル座標計算S)
@@ -114,7 +114,7 @@ volatile float deg1 = 0, deg2 = 0, deg3 = 0;
 volatile float dwl = 0;
 volatile float dxl = 0;
 volatile float dyl = 0;
-volatile float vx = 0, vy = 0;//mm/ms
+volatile float vx = 0, vy = 0; //mm/s
 volatile float omega = 0; // rad/s
 
 // スタート地点から算出するグローバル座標。機体を上から見た時の長方形の幾何学中心を基準点とする
