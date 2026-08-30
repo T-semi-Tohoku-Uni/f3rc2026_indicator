@@ -88,7 +88,7 @@ FDCAN_TxHeaderTypeDef TxHeader_2;
 FDCAN_RxHeaderTypeDef RxHeader_2;
 
 uint8_t TxData[8] = {};
-uint8_t RxData[12] = {}; 
+uint8_t RxData[8] = {}; 
 
 const int16_t vel_id = 0x005;
 const int16_t odometry_id = 0x015;
