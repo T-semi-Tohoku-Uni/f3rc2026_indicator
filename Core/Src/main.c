@@ -479,9 +479,9 @@ void Velocity_Tx()
   FDCAN_TxHeaderTypeDef localTxHeader = TxHeader; // グローバル初期設定をコピー
   localTxHeader.Identifier = vel_id;
 
-  int16_t v_x_tsushin = (int16_t)(VX * 1000);
+  int16_t v_x_tsushin = (int16_t)(VX * 1000); // mm/s
   int16_t v_y_tsushin = (int16_t)(VY * 1000);
-  int16_t omega_tsushin = (int16_t)(Omega * 400);
+  int16_t omega_tsushin = (int16_t)(Omega * 1000); // mrad/s
 
   uint8_t TxData_vel[8] = {};
   TxData_vel[0] = (uint8_t) ( v_x_tsushin >> 8);
