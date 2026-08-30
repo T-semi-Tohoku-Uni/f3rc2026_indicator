@@ -332,58 +332,55 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       y += (vx * sinf(theta) - vy * cosf(theta)) * dt;
     }
     
-    if (roboState == 0){
-      VX = -0.1; VY = 0;
-      if(x < 1000 + offsets[0]) { // 基準点がCの白線を踏んだあたりの処理
-        
-      }
-
-      if(x < 0 + roboWidth/2 + offsets[1]){ // offset必須か。機体がゾーンの端にまで行ったら回収機を起動
-        roboState = 1;
-        servo_mode = 1;
-        timer1 = 500; // state1での動作時間を決める
-      }
+    if (roboState == 0){ // 移動テスト
+      roboState = 1;
+      servo_mode = 1;
+      timer1 = 4000;
     }
 
     if (roboState == 1){
-      VX = 0; VY = 0; Omega = 0; // 回収のため完全停止
+      VX = 0.1; VY = 0;
       if(timer1 == 0) {
         roboState = 2;
+        timer1 = 4000;
       }
     }
 
     if (roboState == 2){
-      VX = 0.1; VY = 0;
-      if(x > 4500 - roboWidth/2 + offsets[2]) { // 庭の端で荷物を下ろす
+      VX = -0.1; VY = 0;
+      if(timer1 == 0) {
         roboState = 3;
         servo_mode = 0;
+        timer1 = 4000;
       }
     }
 
     if (roboState == 3){
-      VX = -0.1; VY = 0;
-      if(x < 1000 + roboWidth/2 + offsets[3]) { // 領域手前まで移動
+      VX = 0; VY = 0.1;
+      if(timer1 == 0) {
         roboState = 4;
+        timer1 = 4000;
       }
     }
 
     if (roboState == 4){
-      VX = 0; VY = 0.1;
-      if(y>1200 + offsets[4]) { // フィールドBの手前に来た時
+      VX = 0; VY = -0.1;
+      if(timer1 == 0) {
         roboState = 5;
+        timer1 = 4000;
       }
     }
 
-    if (roboState == 5){
-      VX = -0.1; VY = 0;
-      if(x < 1000 + offsets[5]) { // 基準点がBの白線を踏んだあたりの処理
-
+    if (roboState == 5){ // サーボによる回収テスト
+      VX = 0.1; VY = 0;
+      if(timer1 == 0) {
+        servo_mode = 1;
+        timer1 = 1000; // 遮断機が降りてくるまでの予想時間
       }
 
-      if(x < 0 + roboWidth/2 + offsets[6]){ // 機体がゾーンの端にまで行ったら回収機を起動
+      if(timer1 == 0){ // 機体がゾーンの端にまで行ったら回収機を起動
         roboState = 6;
-        servo_mode = 1;
-        timer1 = 500;
+        timer1 = 5000; // 回収機構が動作にかかる予想時間
       }
     }
 
@@ -391,69 +388,19 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       VX = 0; VY = 0;
       if(timer1 == 0) {
         roboState = 7;
+        timer1 = 4000;
       }
     }
 
     if (roboState == 7){
-      VX = 0.1; VY = 0;
-      if(x > 4500 - roboWidth/2 + offsets[7]) { // 庭の端で荷物を下ろす
-        roboState = 8;
-        servo_mode = 0;
-      }
-    }
-
-    if (roboState == 8){
       VX = -0.1; VY = 0;
-      if(x < 1000 + roboWidth/2 + offsets[8]) { // 領域手前まで移動
-        roboState = 9;
-      }
-    }
-
-    if (roboState == 9){
-      VX = 0; VY = 0.1; Omega = 0;
-      if(HAL_GPIO_ReadPin(SW1_PC9_GPIO_Port, SW1_PC9_Pin) == My_SWlimit_PRESSED) { // フィールドCの手前に来た時
-        roboState = 10;
-        y = 2400 - roboLength/2;
-      }
-    }
-
-    if (roboState == 10){
-      VX = -0.1; VY = 0;
-      if(x < 1000 + offsets[9]) { // 基準点がAの白線を踏んだあたりの処理
-
-      }
-
-      if(x < 0 + roboWidth/2 + offsets[10]){ // 機体がゾーンの端にまで行ったら回収機を起動
-        roboState = 11;
-        servo_mode = 1;
-        timer1 = 500;
-      }
-    }
-
-    if (roboState == 11){
-      VX = 0; VY = 0;
-      if(timer1 == 0) {
-        roboState = 12;
-
-      }
-    }
-
-    if (roboState == 12){
-      VX = 0.1; VY = 0;
-      if(x > 4500 - roboWidth/2 + offsets[11]) { // 庭の端で荷物を下ろす
-        roboState = 13;
-        servo_mode = 0;
-      }
-    }
-
-    if (roboState == 13){
-      VX = -0.1; VY = 0;
-      if(x < 0 + roboWidth + offsets[12]) {
+      if(timer1 == 0) { // 元の場所に戻り回収物を下ろす
         roboState = 99;
+        servo_mode = 0;
       }
     }
 
-    if (roboState == 99){ // end
+    if (roboState == 99){
       VX = 0; VY = 0;
     }
 
