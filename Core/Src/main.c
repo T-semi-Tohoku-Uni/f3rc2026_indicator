@@ -22,7 +22,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "barSegLED.h"
-#include "tapeLED.h"
 #include <stdio.h>
 #include <stdbool.h> // bool
 #include <math.h>
@@ -579,9 +578,6 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
-  SetUpTapeLED();
-
   while (1)
   {
     // printf("Hello World!\r\n");
