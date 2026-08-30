@@ -335,12 +335,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     if (roboState == 0){
       VX = -0.1; VY = 0;
       if(x < 1000 + offsets[0]) { // 基準点がCの白線を踏んだあたりの処理
-        
+        servo_mode = 1; // 回収機構動作
       }
 
-      if(x < 0 + roboWidth/2 + offsets[1]){ // offset必須か。機体がゾーンの端にまで行ったら回収機を起動
+      if(x < 0 + roboWidth/2 + offsets[1]){ // offset必須か。機体がゾーンの端に行った時の処理。この時までに遮断機が降りていると予想
         roboState = 1;
-        servo_mode = 1;
         timer1 = 500; // state1での動作時間を決める
       }
     }
@@ -377,17 +376,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     if (roboState == 5){
       VX = -0.1; VY = 0;
       if(x < 1000 + offsets[5]) { // 基準点がBの白線を踏んだあたりの処理
-
+        servo_mode = 1; // 回収機構の起動
       }
 
-      if(x < 0 + roboWidth/2 + offsets[6]){ // 機体がゾーンの端にまで行ったら回収機を起動
+      if(x < 0 + roboWidth/2 + offsets[6]){ // 機体がゾーンの端にまで行ったら回収機を起動。ここに到達するまでには遮断機が降りている想定
         roboState = 6;
-        servo_mode = 1;
         timer1 = 500;
       }
     }
 
-    if (roboState == 6){
+    if (roboState == 6){ // 回収動作
       VX = 0; VY = 0;
       if(timer1 == 0) {
         roboState = 7;
@@ -420,12 +418,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     if (roboState == 10){
       VX = -0.1; VY = 0;
       if(x < 1000 + offsets[9]) { // 基準点がAの白線を踏んだあたりの処理
-
+        servo_mode = 1; // 回収機構の動作
       }
 
-      if(x < 0 + roboWidth/2 + offsets[10]){ // 機体がゾーンの端にまで行ったら回収機を起動
+      if(x < 0 + roboWidth/2 + offsets[10]){ // 機体がゾーンの端にまで行った時の処理。ここまでで遮断機が降り切っている想定
         roboState = 11;
-        servo_mode = 1;
         timer1 = 500;
       }
     }
