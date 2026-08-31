@@ -584,7 +584,8 @@ int main(void)
     /* USER CODE BEGIN 3 */
     HAL_Delay(10);
 
-    printf("x:%lf, y:%lf, yaw:%lf\r\n", x, y, yaw);
+    printf("x:%d, y:%d, yaw:%d\r\n", (int)x, (int)y, (int)yaw);
+    printf("value1:%d, value2:%d, value3:%d\r\n", enc_value_1, enc_value_2, enc_value_3);
   }
   /* USER CODE END 3 */
 }
