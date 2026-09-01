@@ -108,7 +108,7 @@ const float roboLength = 491.44;
 volatile float VX = 0, VY = 0; //mm/s
 volatile float Omega = 0; // rad/s
 
-// 機体の位置計算用(ローカル座標計算S)
+// 機体の位置計算用(ローカル座標計算)
 const float dt = 0.001f; // 1ms
 volatile float deg1 = 0, deg2 = 0, deg3 = 0;
 volatile float dwl = 0;
@@ -306,7 +306,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     } else {
       Omega = -KP_OMEGA * yaw;
 
-      // 念のため補正角速度が大きくなりすぎないようリミッターをかける（最大 ±1.0 rad/s）
+      // 念のため補正角速度が大きくなりすぎないようリミッターをかける
       if (Omega > 1.0f)  Omega = 1.0f;
       if (Omega < -1.0f) Omega = -1.0f;
 
@@ -321,7 +321,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       dxl = (deg3 + deg2) * R / 2.0f;
       dyl = deg1 * R - (L * dwl); // Y輪の回転干渉をキャンセル
         
-      // 移動平均を計算（計算負荷は非常に低い）
+      // 移動平均を計算
       vx = update_ma_isr(&avg_x, dxl);
       vy = update_ma_isr(&avg_y, dyl);
       omega = update_ma_isr(&avg_omega, dwl);
