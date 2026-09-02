@@ -133,8 +133,20 @@ volatile float prev_yaw = 0.0f;
 volatile uint16_t buzzerTimerMs = 0; // ブザーを鳴らす残り時間（ms）
 
 // 自己位置推定のズレのoffset用。主にstep部分で使う予定
-float offsets[13]={
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+float offsets[] = {
+    2000.0f,
+    1900.0f,
+    2700.0f,
+    2270.0f,
+    512.0f,
+    1880.0f,
+    1880.0f,
+    2700.0f,
+    2270.0f,
+    1900.0f,
+    1900.0f,
+    2700.0f,
+    2270.0f
 };
 
 volatile uint8_t servo_mode = 0; // 0:復帰, 1:動作
@@ -333,117 +345,100 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
     
     if (roboState == 0){
-      VX = -0.1; VY = 0;
+      VX = -0.2; VY = -0.02;
       if(x < 1000 + offsets[0]) { // 基準点がCの白線を踏んだあたりの処理
-        servo_mode = 1; // 回収機構動作
+        
       }
 
       if(x < 0 + roboWidth/2 + offsets[1]){ // offset必須か。機体がゾーンの端に行った時の処理。この時までに遮断機が降りていると予想
         roboState = 1;
-        timer1 = 500; // state1での動作時間を決める
+        servo_mode = 1; // 回収機構の起動
       }
     }
 
     if (roboState == 1){
-      VX = 0; VY = 0; Omega = 0; // 回収のため完全停止
-      if(timer1 == 0) {
-        roboState = 2;
-      }
-    }
-
-    if (roboState == 2){
-      VX = 0.1; VY = 0;
+      VX = 0.2; VY = -0.02;
       if(x > 4500 - roboWidth/2 + offsets[2]) { // 庭の端で荷物を下ろす
-        roboState = 3;
+        roboState = 2;
         servo_mode = 0;
       }
     }
 
-    if (roboState == 3){
-      VX = -0.1; VY = 0;
+    if (roboState == 2){
+      VX = -0.2; VY = -0.02;
       if(x < 1000 + roboWidth/2 + offsets[3]) { // 領域手前まで移動
+        roboState = 3;
+      }
+    }
+
+    if (roboState == 3){
+      VX = 0; VY = 0.1;
+      if(y>1200 + offsets[4]) { // フィールドBの手前に来た時
         roboState = 4;
       }
     }
 
     if (roboState == 4){
-      VX = 0; VY = 0.1;
-      if(y>1200 + offsets[4]) { // フィールドBの手前に来た時
-        roboState = 5;
-      }
-    }
-
-    if (roboState == 5){
       VX = -0.1; VY = 0;
       if(x < 1000 + offsets[5]) { // 基準点がBの白線を踏んだあたりの処理
         servo_mode = 1; // 回収機構の起動
       }
 
       if(x < 0 + roboWidth/2 + offsets[6]){ // 機体がゾーンの端にまで行ったら回収機を起動。ここに到達するまでには遮断機が降りている想定
-        roboState = 6;
+        roboState = 5;
         timer1 = 500;
       }
     }
 
-    if (roboState == 6){ // 回収動作
+    if (roboState == 5){ // 回収動作
       VX = 0; VY = 0;
       if(timer1 == 0) {
-        roboState = 7;
+        roboState = 6;
       }
     }
 
-    if (roboState == 7){
-      VX = 0.1; VY = 0;
+    if (roboState == 6){
+      VX = 0.2; VY = 0;
       if(x > 4500 - roboWidth/2 + offsets[7]) { // 庭の端で荷物を下ろす
-        roboState = 8;
+        roboState = 7;
         servo_mode = 0;
       }
     }
 
-    if (roboState == 8){
-      VX = -0.1; VY = 0;
+    if (roboState == 7){
+      VX = -0.2; VY = 0;
       if(x < 1000 + roboWidth/2 + offsets[8]) { // 領域手前まで移動
+        roboState = 8;
+      }
+    }
+
+    if (roboState == 8){
+      VX = 0; VY = 0.08; Omega = 0;
+      if(HAL_GPIO_ReadPin(SW1_PC9_GPIO_Port, SW1_PC9_Pin) == My_SWlimit_PRESSED) { // フィールドCの手前に来た時
         roboState = 9;
       }
     }
 
     if (roboState == 9){
-      VX = 0; VY = 0.1; Omega = 0;
-      if(HAL_GPIO_ReadPin(SW1_PC9_GPIO_Port, SW1_PC9_Pin) == My_SWlimit_PRESSED) { // フィールドCの手前に来た時
-        roboState = 10;
-        y = 2400 - roboLength/2;
-      }
-    }
-
-    if (roboState == 10){
-      VX = -0.1; VY = 0;
+      VX = -0.2; VY = 0.07;
       if(x < 1000 + offsets[9]) { // 基準点がAの白線を踏んだあたりの処理
         servo_mode = 1; // 回収機構の動作
       }
 
       if(x < 0 + roboWidth/2 + offsets[10]){ // 機体がゾーンの端にまで行った時の処理。ここまでで遮断機が降り切っている想定
-        roboState = 11;
-        timer1 = 500;
+        roboState = 10;
       }
     }
 
-    if (roboState == 11){
-      VX = 0; VY = 0;
-      if(timer1 == 0) {
-        roboState = 12;
-
-      }
-    }
-
-    if (roboState == 12){
+    if (roboState == 10){
       VX = 0.1; VY = 0;
       if(x > 4500 - roboWidth/2 + offsets[11]) { // 庭の端で荷物を下ろす
-        roboState = 13;
+        roboState = 11;
         servo_mode = 0;
       }
     }
 
-    if (roboState == 13){
+    if (roboState == 11){
       VX = -0.1; VY = 0;
       if(x < 0 + roboWidth + offsets[12]) {
         roboState = 99;
